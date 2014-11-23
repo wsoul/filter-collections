@@ -13,7 +13,7 @@ Meteor.FilterCollections = function (collection, settings) {
   var _subscriptionResultsId = 'fc-' + self.name + '-results';
   var _subscriptionCountId = 'fc-' + self.name + '-count';
 
-  self._collectionCount = new Meteor.Collection(self.name + 'CountFC');
+  self._collectionCount = new Mongo.Collection(self.name + 'CountFC');
 
   var _deps = {
     query: new Tracker.Dependency(),
