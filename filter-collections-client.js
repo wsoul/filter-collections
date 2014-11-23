@@ -6,7 +6,14 @@ Meteor.FilterCollections = function (collection, settings) {
   var _initialized = false;
   var _EJSONQuery = {};
 
-  self._collection = collection || {};
+  // This finds the existing Mongo Collection (which throws an error, but still finds it!)
+  // This is necessary since Meteor doesn't expose a way to getCollection by name
+  // You can potentially loop thru all window objects, check for instance of Mongo.Collection, and 
+  // match on the _name attribute, but the template will have already run its helper function
+  // before that loop returns the right instance.
+  // See: http://stackoverflow.com/questions/10984030/get-meteor-collection-by-name
+  self._collection = new Mongo.Collection(collection);
+
 
   self.name = (_settings.name) ? _settings.name : self._collection._name;
 
@@ -630,7 +637,13 @@ Meteor.FilterCollections = function (collection, settings) {
       if (_.isFunction(_callbacks.beforeResults))
         q = _callbacks.beforeResults(q) || q;
 
+      console.log('in getResults', self._collection)
+      console.log('in getResults', self)
+
       var cursor = self._collection.find(q.selector, q.options);
+      // var cursor = NflPlayers.find(q.selector, q.options);
+
+      console.log('in getResults', cursor)
 
       if (_.isFunction(_callbacks.afterResults))
         cursor = _callbacks.afterResults(cursor) || cursor;
