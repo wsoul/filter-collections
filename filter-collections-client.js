@@ -16,11 +16,11 @@ Meteor.FilterCollections = function (collection, settings) {
   self._collectionCount = new Meteor.Collection(self.name + 'CountFC');
 
   var _deps = {
-    query: new Deps.Dependency(),
-    sort: new Deps.Dependency(),
-    pager: new Deps.Dependency(),
-    filter: new Deps.Dependency(),
-    search: new Deps.Dependency()
+    query: new Tracker.Dependency(),
+    sort: new Tracker.Dependency(),
+    pager: new Tracker.Dependency(),
+    filter: new Tracker.Dependency(),
+    search: new Tracker.Dependency()
   };
 
   var _callbacks = {
@@ -66,7 +66,7 @@ Meteor.FilterCollections = function (collection, settings) {
    */
   var _autorun = function () {
 
-    Deps.autorun(function (computation) {
+    Tracker.autorun(function (computation) {
 
       if (!_initialized) {
         self.sort.init(); // Set default query values for sorting.

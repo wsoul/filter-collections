@@ -1,4 +1,7 @@
-#Meteor's Filter Collections
+#Meteor's Filter 
+TESTING FOR Meteor v1.0
+This documentation is relatively UNCHANGED from the original.
+
 Filter Collections is a Smart package for Meteor that adds Sorting, Paging, Filter and Search capabilities for our collections.
 Works well (but not necessarily) with [Collection2](https://github.com/aldeed/meteor-collection2  "Collection2").
 
@@ -30,12 +33,12 @@ This module does not attach any template. Instead, it provides useful helpers to
 
 ###From atmosphere.meteor.com
 ```
-mrt add filter-collections
+meteor add ericchen0121:filter-collections
 ```
 
 ###From github.com
 ```
-git clone https://github.com/julianmontagna/filter-collections.git
+git clone https://github.com/ericchen0121/filter-collections.git
 ```
 
 ---------------------------------------
