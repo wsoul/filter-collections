@@ -1,6 +1,6 @@
 Package.describe({
   summary: " Smart package for Meteor that adds filter and pager behavior to our Meteor's collections.",
-  version: "0.1.8",
+  version: "0.1.9",
   git: "https://github.com/ericchen0121/filter-collections"
 });
 

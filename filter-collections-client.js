@@ -5,14 +5,8 @@ Meteor.FilterCollections = function (collection, settings) {
   var _settings = settings || {};
   var _initialized = false;
   var _EJSONQuery = {};
-
-  // This finds the existing Mongo Collection (which throws an error, but still finds it!)
-  // This is necessary since Meteor doesn't expose a way to getCollection by name
-  // You can potentially loop thru all window objects, check for instance of Mongo.Collection, and 
-  // match on the _name attribute, but the template will have already run its helper function
-  // before that loop returns the right instance.
-  // See: http://stackoverflow.com/questions/10984030/get-meteor-collection-by-name
-  self._collection = new Mongo.Collection(collection);
+  
+  self._collection = collection || {};
 
 
   self.name = (_settings.name) ? _settings.name : self._collection._name;
