@@ -1,6 +1,6 @@
 Package.describe({
-  summary: " Smart package for Meteor that adds filter and pager behavior to our Meteor's collections.",
-  version: "0.1.9",
+  summary: "Smart package for Meteor that adds filter and pager behavior to our Meteor's collections. Supports Iron-Router",
+  version: "0.2.0",
   git: "https://github.com/workpop/filter-collections"
 });
 
