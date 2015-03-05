@@ -1,5 +1,5 @@
 Package.describe({
-  summary: "Smart package for Meteor that adds filter and pager behavior to our Meteor's collections. Supports Iron-Router",
+  summary: "Filter, paging and sort for Meteor collections with hooks and Iron Router support.",
   version: "0.2.0",
   name: "doctorpangloss:filter-collections",
   git: "https://github.com/workpop/filter-collections"
