@@ -1,12 +1,11 @@
-#Meteor's Filter 
-TESTED FOR Meteor v1.0
+## Meteor's Filter 
+
 
 Filter Collections is a Smart package for Meteor that adds Sorting, Paging, Filter and Search capabilities for our collections.
 Works well (but not necessarily) with [Collection2](https://github.com/aldeed/meteor-collection2  "Collection2").
 
----------------------------------------
 
-##Features
+## Features
 
 ###Sort
 Order results by single or multiple collection's fields.
