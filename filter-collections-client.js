@@ -647,14 +647,9 @@ FilterCollections = function (collection, settings) {
 
       if (_.isFunction(_callbacks.beforeResults))
         q = _callbacks.beforeResults(q) || q;
-
-      console.log('in getResults', self._collection)
-      console.log('in getResults', self)
-
+      
       var cursor = self._collection.find(q.selector, q.options);
       // var cursor = NflPlayers.find(q.selector, q.options);
-
-      console.log('in getResults', cursor)
 
       if (_.isFunction(_callbacks.afterResults))
         cursor = _callbacks.afterResults(cursor) || cursor;
