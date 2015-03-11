@@ -1,5 +1,28 @@
 FilterCollections = {};
 
+FilterCollections._extendedPublishCursor = function (cursor, sub, collection, name) {
+  var observeHandle = cursor.observeChanges({
+    added: function (id, fields) {
+      // Add the name of this filter collection
+      fields.__filter = name;
+      sub.added(collection, id, fields);
+    },
+    changed: function (id, fields) {
+      fields.__filter = name;
+      sub.changed(collection, id, fields);
+    },
+    removed: function (id) {
+      sub.removed(collection, id);
+    }
+  });
+
+  // We don't call sub.ready() here: it gets called in livedata_server, after
+  // possibly calling _publishCursor on multiple returned cursors.
+
+  // register stop callback (expects lambda w/ no args).
+  sub.onStop(function () {observeHandle.stop();});
+};
+
 FilterCollections.publish = function (collection, options) {
 
   var self = this;
@@ -49,7 +72,7 @@ FilterCollections.publish = function (collection, options) {
     if (callbacks.afterPublish && _.isFunction(callbacks.afterPublish))
       cursor = callbacks.afterPublish('results', cursor, this) || cursor;
 
-    return cursor;
+    FilterCollections._extendedPublishCursor(cursor, this, collection._name, publisherResultsId);
   });
 
   /**
@@ -74,7 +97,7 @@ FilterCollections.publish = function (collection, options) {
     if(callbacks.beforePublish && _.isFunction(callbacks.beforePublish))
       query = callbacks.beforePublish(query, this) || query;
 
-    count = collection.find(query.selector).count() || 0;
+    var count = collection.find(query.selector).count() || 0;
 
     if(callbacks.afterPublish && _.isFunction(callbacks.afterPublish))
       cursor = callbacks.afterPublish('count', cursor, this) || cursor;

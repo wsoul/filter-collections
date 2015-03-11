@@ -16,6 +16,7 @@ FilterCollections = function (collection, settings) {
 
   var _subscriptionResultsId = 'fc-' + self.name + '-results';
   var _subscriptionCountId = 'fc-' + self.name + '-count';
+  var _useFilterDataOnly = !!_settings.useFilterDataOnly;
 
   var collectionCountName = self.name + 'CountFC';
   if(collectionCache[collectionCountName] === undefined)
@@ -123,8 +124,8 @@ FilterCollections = function (collection, settings) {
         self.pager.setTotals(res);
       }
 
-      if(_subs.results.ready() && _subs.count.ready() && !initial_ready){
-        initial_ready = true;
+      if(_subs.results.ready() && _subs.count.ready() && !_initial_ready){
+        _initial_ready = true;
         _deps.initial_ready.changed();
       }
     });
@@ -642,14 +643,17 @@ FilterCollections = function (collection, settings) {
       this.set(_query);
     },
     getResults: function(){
-      var q = _.clone(_query);
+      var q = EJSON.clone(_query);
       q.options = _.omit(q.options, 'skip', 'limit');
+
+      // If we only want results fed from the FilterCollections publish, modify the selector
+      if (_useFilterDataOnly)
+        q.selector.__filter = _subscriptionResultsId;
 
       if (_.isFunction(_callbacks.beforeResults))
         q = _callbacks.beforeResults(q) || q;
       
       var cursor = self._collection.find(q.selector, q.options);
-      // var cursor = NflPlayers.find(q.selector, q.options);
 
       if (_.isFunction(_callbacks.afterResults))
         cursor = _callbacks.afterResults(cursor) || cursor;
@@ -665,7 +669,7 @@ FilterCollections = function (collection, settings) {
   self.ready = function ready() {
     _autorun();
     _deps.initial_ready.depend();
-    return initial_ready;
+    return _initial_ready;
   };
 
   self.stop = function stop() {
