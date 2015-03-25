@@ -408,8 +408,8 @@ FilterCollections = function (collection, settings) {
    */
   self.filter = {
     get: function () {
-      var filters = _filters;
-      return filters;
+      _deps.filter.depend();
+      return EJSON.clone(_filters);
     },
     set: function (key, filter, triggerUpdate) {
 
@@ -425,7 +425,7 @@ FilterCollections = function (collection, settings) {
       if(triggerUpdate)
         this.run();
 
-      return;
+      _deps.filter.changed();
     },
     getSelector: function(){
       var selector = {};
