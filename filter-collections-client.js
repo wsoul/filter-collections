@@ -472,7 +472,7 @@ FilterCollections = function (collection, settings) {
     getActive: function(){
       var filters = [];
 
-      _.each(_filters, function (filter, key) {
+      _.each(self.filter.get(), function(filter, key) {
         if (filter.value)
           filters.push({
             title: filter.title,
@@ -524,6 +524,8 @@ FilterCollections = function (collection, settings) {
 
       if(triggerUpdate)
         this.run();
+
+      _deps.filter.changed();
     }
   };
 
