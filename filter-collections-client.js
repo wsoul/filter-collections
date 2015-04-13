@@ -401,16 +401,17 @@ FilterCollections = function (collection, settings) {
             _deps.filter.depend();
             return EJSON.clone(_filters);
         },
-        set: function (key, filter, triggerUpdate) {
+        set: function (filterField, filterSettings, triggerUpdate) {
             triggerUpdate = _.isUndefined(triggerUpdate) ? true : triggerUpdate;
 
-            if (!_.has(_filters, key)) {
-                throw new Error("Filter Collection Error: " + key + " is not a valid filter.");
+            if (!_.has(_filters, filterField)) {
+                throw new Error("Filter Collection Error: " + filterField + " is not a valid filter.");
             }
 
-            _filters[key] = _.extend(_filters[key], filter);
+            _filters[filterField] = _.extend(_filters[filterField], filterSettings);
 
-            _filters[key].active = _filters[key].active ? false : true;
+            // If a value is defined, this filter is active
+            _filters[filterField].active = !!_filters[filterField].value;
 
             if (triggerUpdate) {
                 this.run();
@@ -425,7 +426,6 @@ FilterCollections = function (collection, settings) {
             _.each(_filters, function (filter, key) {
                 if (filter.value) {
                     var segment = {};
-                    var append = {};
                     var value;
                     segment[key] = {};
 
@@ -454,7 +454,7 @@ FilterCollections = function (collection, settings) {
                         self.sort.set(key, filter.sort, true);
                     }
 
-                    append = (!_.isEmpty(condition)) ? condition : segment;
+                    var append = (!_.isEmpty(condition)) ? condition : segment;
                     selector = _.extend(selector, append);
                 }
             });
@@ -506,13 +506,8 @@ FilterCollections = function (collection, settings) {
             if (key
                 && _filters[key]
                 && _filters[key].value) {
-                _filters[key] = _.omit(_filters[key], 'value');
-            } else {
-                _.each(_filters, function (filter, key) {
-                    if (filter.value) {
-                        _filters[key] = _.omit(_filters[key], 'value');
-                    }
-                });
+                delete _filters[key].value;
+                _filters[key].active = false;
             }
 
             if (triggerUpdate) {
