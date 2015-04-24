@@ -4,11 +4,15 @@ FilterCollections._extendedPublishCursor = function (cursor, sub, collection, na
     var observeHandle = cursor.observeChanges({
         added: function (id, fields) {
             // Add the name of this filter collection
-            fields.__filter = name;
+            if (name) {
+                fields.__filter = name;
+            }
             sub.added(collection, id, fields);
         },
         changed: function (id, fields) {
-            fields.__filter = name;
+            if (name) {
+                fields.__filter = name;
+            }
             sub.changed(collection, id, fields);
         },
         removed: function (id) {
@@ -26,55 +30,76 @@ FilterCollections._extendedPublishCursor = function (cursor, sub, collection, na
 };
 
 FilterCollections.publish = function (collection, options) {
+    var optionalFunction = Match.Optional(Function);
 
-    var self = this;
-
+    check(collection, Mongo.Collection);
+    var optionalString = Match.Optional(String);
+    check(options, Match.Optional({
+        name: optionalString,
+        callbacks: Match.Optional({
+            allow: optionalFunction,
+            beforePublish: optionalFunction,
+            afterPublish: optionalFunction
+        })
+    }));
     options = options || {};
-
     var callbacks = options.callbacks || {};
 
-    // var cursor = {};
+    _.defaults(options, {
+        name: collection._name
+    });
 
-    var name = (options.name) ? options.name : collection._name;
-
-    var publisherResultsId = 'fc-' + name + '-results';
-    var publisherCountId = 'fc-' + name + '-count';
-    var publisherCountCollectionName = name + 'CountFC';
+    var publisherResultsCollectionName = options.name;
+    var publisherResultsId = 'fc-' + options.name + '-results';
+    var publisherCountId = 'fc-' + options.name + '-count';
+    var publisherCountCollectionName = options.name + 'CountFC';
 
     /**
      * Publish query results.
      */
 
     Meteor.publish(publisherResultsId, function (query) {
-
+        var self = this;
         var allow = true;
 
-        if (callbacks.allow && _.isFunction(callbacks.allow))
+        // Check if this publish is allowed.
+        if (callbacks.allow) {
             allow = callbacks.allow(query, this);
+        }
 
         if (!allow) {
             throw new Meteor.Error(417, 'Not allowed');
         }
 
-        query = (query && !_.isEmpty(query)) ? query : {};
+        query = query || {};
 
-        query.selector = query.selector || {};
+        _.defaults(query, {
+            selector: {},
+            options: {}
+        });
 
-        query.options = query.options || {
+        _.defaults(query.options, {
             sort: [],
             skip: 0,
             limit: 10
-        };
+        });
 
-        if (callbacks.beforePublish && _.isFunction(callbacks.beforePublish))
+        if (callbacks.beforePublish) {
             query = callbacks.beforePublish(query, this) || query;
+        }
+
 
         var cursor = collection.find(query.selector, query.options);
 
-        if (callbacks.afterPublish && _.isFunction(callbacks.afterPublish))
+        if (callbacks.afterPublish) {
             cursor = callbacks.afterPublish('results', cursor, this) || cursor;
+        }
 
-        FilterCollections._extendedPublishCursor(cursor, this, collection._name, publisherResultsId);
+        FilterCollections._extendedPublishCursor(cursor, this, publisherResultsCollectionName, publisherResultsId);
+
+        // Call ready since the extended publish cursor, like the official publish cursor version, does not call
+        // ready by itself.
+        self.ready();
     });
 
     /**
@@ -86,29 +111,35 @@ FilterCollections.publish = function (collection, options) {
         var allow = true;
         var cursor = {};
 
-        if (callbacks.allow && _.isFunction(callbacks.allow))
+        if (callbacks.allow
+            && _.isFunction(callbacks.allow)) {
             allow = callbacks.allow(query, this);
+        }
 
         if (!allow) {
             throw new Meteor.Error(417, 'Not allowed');
         }
 
-        query = (query && !_.isEmpty(query)) ? query : {};
-        query.selector = query.selector || {};
+        query = query || {};
+        _.defaults(query, {
+            selector: {}
+        });
 
-        if (callbacks.beforePublish && _.isFunction(callbacks.beforePublish))
+        if (callbacks.beforePublish) {
             query = callbacks.beforePublish(query, this) || query;
+        }
 
         var count = collection.find(query.selector).count() || 0;
 
-        if (callbacks.afterPublish && _.isFunction(callbacks.afterPublish))
+        if (callbacks.afterPublish) {
             cursor = callbacks.afterPublish('count', cursor, this) || cursor;
+        }
 
         self.added(publisherCountCollectionName, Meteor.uuid(), {
             count: count,
             query: query
         });
 
-        this.ready();
+        self.ready();
     });
 };

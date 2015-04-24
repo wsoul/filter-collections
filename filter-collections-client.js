@@ -1,4 +1,4 @@
-collectionCache = {};
+var collectionCache = {};
 
 FilterCollections = function (collection, settings) {
     if (!this instanceof FilterCollections) {
