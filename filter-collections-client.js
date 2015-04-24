@@ -17,7 +17,6 @@ FilterCollections = function (collection, settings) {
 
     var _subscriptionResultsId = 'fc-' + self.name + '-results';
     var _subscriptionCountId = 'fc-' + self.name + '-count';
-    var _useFilterDataOnly = !!_settings.useFilterDataOnly;
 
     var collectionCountName = self.name + 'CountFC';
     if (collectionCache[collectionCountName] === undefined) {
@@ -635,16 +634,13 @@ FilterCollections = function (collection, settings) {
             var temporaryQuery = EJSON.clone(_query);
             temporaryQuery.options = _.omit(temporaryQuery.options, 'skip', 'limit');
 
-            // If we only want results fed from the FilterCollections publish, modify the selector
-            if (_useFilterDataOnly) {
-                temporaryQuery.selector.__filter = _subscriptionResultsId;
-            }
-
             if (_.isFunction(_callbacks.beforeResults)) {
                 temporaryQuery = _callbacks.beforeResults(temporaryQuery) || temporaryQuery;
             }
 
-            var cursor = self._collection.find(temporaryQuery.selector, temporaryQuery.options);
+            var cursor = self._collection.find({
+                __filter: _subscriptionResultsId
+            }, temporaryQuery.options);
 
             if (_.isFunction(_callbacks.afterResults)) {
                 cursor = _callbacks.afterResults(cursor) || cursor;
