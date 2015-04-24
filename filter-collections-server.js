@@ -33,8 +33,9 @@ FilterCollections.publish = function (collection, options) {
     var optionalFunction = Match.Optional(Function);
 
     check(collection, Mongo.Collection);
+    var optionalString = Match.Optional(String);
     check(options, Match.Optional({
-        name: Match.Optional(String),
+        name: optionalString,
         callbacks: Match.Optional({
             allow: optionalFunction,
             beforePublish: optionalFunction,
@@ -48,6 +49,7 @@ FilterCollections.publish = function (collection, options) {
         name: collection._name
     });
 
+    var publisherResultsCollectionName = options.name;
     var publisherResultsId = 'fc-' + options.name + '-results';
     var publisherCountId = 'fc-' + options.name + '-count';
     var publisherCountCollectionName = options.name + 'CountFC';
@@ -93,7 +95,7 @@ FilterCollections.publish = function (collection, options) {
             cursor = callbacks.afterPublish('results', cursor, this) || cursor;
         }
 
-        FilterCollections._extendedPublishCursor(cursor, this, collection._name, publisherResultsId);
+        FilterCollections._extendedPublishCursor(cursor, this, publisherResultsCollectionName, publisherResultsId);
 
         // Call ready since the extended publish cursor, like the official publish cursor version, does not call
         // ready by itself.
