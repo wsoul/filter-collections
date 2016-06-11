@@ -1,4 +1,9 @@
 var collectionCache = {};
+// Always maintain position of the last search/filter/pager/query
+var last_query = null;
+var last_sort = null;
+var last_filters = null;
+var last_criteria = "";
 
 FilterCollections = function (collection, settings) {
     if (!this instanceof FilterCollections) {
@@ -12,17 +17,20 @@ FilterCollections = function (collection, settings) {
     var _EJSONQuery = {};
 
     self._collection = collection || {};
-
     self.name = (_settings.name) ? _settings.name : self._collection._name;
+    var offline = _settings.offline && _settings.offline == true;
+    self.offline = offline;
 
     var _subscriptionResultsId = 'fc-' + self.name + '-results';
     var _subscriptionCountId = 'fc-' + self.name + '-count';
 
-    var collectionCountName = self.name + 'CountFC';
-    if (collectionCache[collectionCountName] === undefined) {
-        collectionCache[collectionCountName] = self._collectionCount = new Mongo.Collection(collectionCountName);
-    } else {
-        self._collectionCount = collectionCache[collectionCountName];
+    if (!offline) {
+        var collectionCountName = self.name + 'CountFC';
+        if (collectionCache[collectionCountName] === undefined) {
+            collectionCache[collectionCountName] = self._collectionCount = new Mongo.Collection(collectionCountName);
+        } else {
+            self._collectionCount = collectionCache[collectionCountName];
+        }
     }
 
     var _deps = {
@@ -71,6 +79,17 @@ FilterCollections = function (collection, settings) {
         options: {}
     };
 
+    if (true==settings.remember_query && last_query) {
+        //TODO config option to be able to skip this part.
+        //console.debug("last_query is",last_query);
+        _query = last_query;
+        _filters = last_filters;
+        _sorts = last_sort;
+    }
+
+    // Set default pager options
+    // self.pager.init(); // Set defaul query values for paging.
+
     var _autorun_handle;
     // FilterCollections is ready from e.g. Iron Router perspective
     var _initial_ready;
@@ -93,44 +112,57 @@ FilterCollections = function (collection, settings) {
 
             var query = self.query.get();
 
-            if (_.isFunction(_callbacks.beforeSubscribe)) {
-                query = _callbacks.beforeSubscribe(query) || query;
-            }
-
-            _subs.results = Meteor.subscribe(_subscriptionResultsId, query, {
-                onError: function (error) {
-                    if (_.isFunction(_callbacks.afterSubscribe)) {
-                        _callbacks.afterSubscribe(error, this);
-                    }
+            if (!offline) {
+                if (_.isFunction(_callbacks.beforeSubscribe)) {
+                    query = _callbacks.beforeSubscribe(query) || query;
                 }
-            });
 
-            if (_subs.results.ready() && _.isFunction(_callbacks.afterSubscribe))
-                _callbacks.afterSubscribe(null, this);
+                _subs.results = Meteor.subscribe(_subscriptionResultsId, query, {
+                    onError: function (error) {
+                        if (_.isFunction(_callbacks.afterSubscribe)) {
+                            _callbacks.afterSubscribe(error, this);
+                        }
+                    }
+                });
 
-            if (_.isFunction(_callbacks.beforeSubscribeCount))
-                query = _callbacks.beforeSubscribeCount(query) || query;
+                if (_subs.results.ready() && _.isFunction(_callbacks.afterSubscribe))
+                    _callbacks.afterSubscribe(null, this);
 
-            _subs.count = Meteor.subscribe(_subscriptionCountId, query, {
-                onError: function (error) {
+                if (_.isFunction(_callbacks.beforeSubscribeCount))
+                    query = _callbacks.beforeSubscribeCount(query) || query;
+
+                _subs.count = Meteor.subscribe(_subscriptionCountId, query, {
+                    onError: function (error) {
+                        if (_.isFunction(_callbacks.afterSubscribeCount)) {
+                            _callbacks.afterSubscribeCount(error, this);
+                        }
+                    }
+                });
+
+                if (_subs.count.ready()) {
                     if (_.isFunction(_callbacks.afterSubscribeCount)) {
-                        _callbacks.afterSubscribeCount(error, this);
+                        _callbacks.afterSubscribeCount(null, this);
                     }
-                }
-            });
 
-            if (_subs.count.ready()) {
-                if (_.isFunction(_callbacks.afterSubscribeCount)) {
-                    _callbacks.afterSubscribeCount(null, this);
+                    var res = self._collectionCount.findOne({});
+                    self.pager.setTotals(res);
                 }
 
-                var res = self._collectionCount.findOne({});
-                self.pager.setTotals(res);
-            }
-
-            if (_subs.results.ready() && _subs.count.ready() && !_initial_ready) {
-                _initial_ready = true;
-                _deps.initial_ready.changed();
+                // console.debug("check ",_subs.results.ready(), _subs.count.ready(), !_initial_ready);
+                if (_subs.results.ready() && _subs.count.ready() && !_initial_ready) {
+                    _initial_ready = true;
+                    _deps.initial_ready.changed();
+                }
+            } else {
+                var count = self._collection.find(query.selector).count();
+                self.pager.setTotals({
+                    count: count,
+                    query: query
+                });
+                if (!_initial_ready) {
+                    _initial_ready = true;
+                    _deps.initial_ready.changed();
+                }
             }
         });
     };
@@ -496,6 +528,7 @@ FilterCollections = function (collection, settings) {
         },
         run: function () {
             _query.selector = this.getSelector();
+            //console.debug("running query", _query);
             self.query.set(_query);
             self.pager.moveTo(1);
         },
@@ -527,6 +560,7 @@ FilterCollections = function (collection, settings) {
         required: [],
         init: function () {
             this.setFields();
+            this.setCriteria(last_criteria);
         },
         getFields: function (full) {
             _deps.search.depend();
@@ -582,11 +616,13 @@ FilterCollections = function (collection, settings) {
         },
         setCriteria: function (value, triggerUpdate) {
 
+            last_criteria = value;
             triggerUpdate = triggerUpdate || false;
 
             var activeFields = this.getFields(true);
 
-            if (value) {
+            // Replace if(value) otherwise empty "" don't update search
+            if (value != null) {
                 this.criteria = value;
                 _.each(activeFields, function (field, key) {
                     if (field.active) {
@@ -620,27 +656,47 @@ FilterCollections = function (collection, settings) {
     self.query = {
         get: function () {
             _deps.query.depend();
-            return EJSON.parse(_EJSONQuery);
+            //FIX sometime _EJSONQuery is not set correctly and cause the browser to fail.
+            if (typeof(_EJSONQuery) == "string")
+                return EJSON.parse(_EJSONQuery);
+            else //FIX to return a default query object.
+                return {selector: {}, options: {}};
         },
         set: function (query) {
             _EJSONQuery = EJSON.stringify(query);
             _deps.query.changed();
+            last_query = query;
+            last_sort = _sorts;
+            last_filters = _filters;
         },
         updateResults: function () {
             _query.force = new Date().getTime();
             this.set(_query);
         },
         getResults: function () {
-            var temporaryQuery = EJSON.clone(_query);
-            temporaryQuery.options = _.omit(temporaryQuery.options, 'skip', 'limit');
+            if (!offline) {
+                var temporaryQuery = EJSON.clone(_query);
+                temporaryQuery.options = _.omit(temporaryQuery.options, 'skip', 'limit');
 
-            if (_.isFunction(_callbacks.beforeResults)) {
-                temporaryQuery = _callbacks.beforeResults(temporaryQuery) || temporaryQuery;
+                if (_.isFunction(_callbacks.beforeResults)) {
+                    temporaryQuery = _callbacks.beforeResults(temporaryQuery) || temporaryQuery;
+                }
+
+                cursor = self._collection.find({
+                    __filter: _subscriptionResultsId
+                }, temporaryQuery.options);
+                // console.debug("getting result from", self._collection);
+                // cursor = self._collection.find({},temporaryQuery.options);
+            } else {
+                // console.debug("Offline getting results",_query);
+                var temporaryQuery = EJSON.clone(_query);
+
+                if (_.isFunction(_callbacks.beforeResults)) {
+                    temporaryQuery = _callbacks.beforeResults(temporaryQuery) || temporaryQuery;
+                }
+                cursor = self._collection.find(temporaryQuery.selector, temporaryQuery.options);
             }
 
-            var cursor = self._collection.find({
-                __filter: _subscriptionResultsId
-            }, temporaryQuery.options);
 
             if (_.isFunction(_callbacks.afterResults)) {
                 cursor = _callbacks.afterResults(cursor) || cursor;
@@ -665,20 +721,21 @@ FilterCollections = function (collection, settings) {
             _autorun_handle.stop();
             _autorun_handle = undefined;
         }
-        if (_subs.results.stop !== undefined) {
-            _subs.results.stop();
-            _subs.results = {}
-        }
-        if (_subs.count.stop !== undefined) {
-            _subs.count.stop();
-            _subs.count = {}
+        if (!offline) {
+            if (_subs.results.stop !== undefined) {
+                _subs.results.stop();
+                _subs.results = {}
+            }
+            if (_subs.count.stop !== undefined) {
+                _subs.count.stop();
+                _subs.count = {}
+            }
         }
     };
 
     /**
      * Template extensions
      */
-
     if (Template[_template]) {
         Template[_template].created = function () {
             _autorun();
@@ -696,8 +753,10 @@ FilterCollections = function (collection, settings) {
 
         /** Template cleanup. **/
         Template[_template].destroyed = function () {
-            _subs.results.stop();
-            _subs.count.stop();
+            if (!offline) {
+                _subs.results.stop();
+                _subs.count.stop();
+            }
 
             if (_.isFunction(_callbacks.templateDestroyed)) {
                 _callbacks.templateDestroyed(this);
@@ -706,6 +765,7 @@ FilterCollections = function (collection, settings) {
 
         Template[_template].helpers({
             fcResults: function () {
+                _deps.query.depend();
                 return self.query.getResults();
             },
             fcSort: function () {
@@ -721,10 +781,15 @@ FilterCollections = function (collection, settings) {
                 return self.filter.getActive();
             },
             fcFilterSearchable: function () {
+                // Fixed unreactive search filter
+                _deps.query.depend();
                 return {
                     available: self.search.getFields(),
                     criteria: self.search.getCriteria()
                 };
+            },
+            fcSelector: function () {
+                return EJSON.stringify(self.query.get());
             },
             fcFilterObj: function () {
                 return self.filter;
@@ -759,7 +824,6 @@ FilterCollections = function (collection, settings) {
                 if (sort) {
                     filter['sort'] = sort;
                 }
-
                 self.filter.set(field, filter);
             },
             'click .fc-filter-clear': function (event) {
@@ -776,10 +840,14 @@ FilterCollections = function (collection, settings) {
             'click .fc-filter-reset': function (event) {
                 event.preventDefault();
 
-                if (self.filter.getActive().length) {
-                    self.search.clear();
-                    self.filter.clear();
-                }
+                var actives = self.filter.getActive();
+                //console.debug("active filters",actives);
+                _.forEach(actives, function (filter) {
+                    self.filter.clear(filter.key, false);
+                });
+                self.filter.run();
+                // Clear search as well
+                self.search.clear();
             },
 
             /** Search **/
@@ -794,9 +862,16 @@ FilterCollections = function (collection, settings) {
                 event.preventDefault();
                 self.search.setField(this.field);
             },
+            'keypress .fc-search-field': function (event, template) {
+                if (event.keyCode == 13) { // Enter
+                    var value = event.target.value;
+                    self.search.setCriteria(value, true);
+                }
+            },
             'click .fc-search-clear': function (event, template) {
                 event.preventDefault();
                 self.search.clear();
+                self.search.setCriteria("", true);
             },
 
             /** Pager **/

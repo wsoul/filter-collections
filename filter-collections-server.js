@@ -30,9 +30,15 @@ FilterCollections._extendedPublishCursor = function (cursor, sub, collection, na
 };
 
 FilterCollections.publish = function (collection, options) {
+
     var optionalFunction = Match.Optional(Function);
 
-    check(collection, Mongo.Collection);
+    try {
+        check(collection, Mongo.Collection);
+    } catch(e) {
+        log.error("Failed check validation for:"+collection._name, e);
+    }
+
     var optionalString = Match.Optional(String);
     check(options, Match.Optional({
         name: optionalString,
@@ -57,7 +63,6 @@ FilterCollections.publish = function (collection, options) {
     /**
      * Publish query results.
      */
-
     Meteor.publish(publisherResultsId, function (query) {
         var self = this;
         var allow = true;
@@ -84,18 +89,20 @@ FilterCollections.publish = function (collection, options) {
             limit: 10
         });
 
+        //console.log("query selector",JSON.stringify(query.selector));
         if (callbacks.beforePublish) {
             query = callbacks.beforePublish(query, this) || query;
         }
-
-
         var cursor = collection.find(query.selector, query.options);
 
         if (callbacks.afterPublish) {
             cursor = callbacks.afterPublish('results', cursor, this) || cursor;
         }
 
-        FilterCollections._extendedPublishCursor(cursor, this, publisherResultsCollectionName, publisherResultsId);
+        // log.info("publisherResultsId: "+publisherResultsId, collection._name);
+        FilterCollections._extendedPublishCursor(cursor, this, collection._name, publisherResultsId);
+        //TODO: why there was publisherResultsCollectionName instead of collection._name? We dont create any new Mongo collection with name publisherResultsCollectionName
+        // FilterCollections._extendedPublishCursor(cursor, this, publisherResultsCollectionName, publisherResultsId);
 
         // Call ready since the extended publish cursor, like the official publish cursor version, does not call
         // ready by itself.
@@ -129,17 +136,48 @@ FilterCollections.publish = function (collection, options) {
             query = callbacks.beforePublish(query, this) || query;
         }
 
-        var count = collection.find(query.selector).count() || 0;
+        var uuid = Meteor.uuid();
+        var tmp_cursor = collection.find(query.selector);
+        var count = tmp_cursor.count();
+        var initializing = true;
+
+        // observeChanges only returns after the initial `added` callbacks
+        // have run. Until then, we don't want to send a lot of
+        // `self.changed()` messages - hence tracking the
+        // `initializing` state.
+        var handle = tmp_cursor.observe({
+            removed: function() {
+                if (!initializing) {
+                    self.changed(publisherCountCollectionName, uuid, {
+                        count: tmp_cursor.count(),
+                        query: query
+                    });
+                }
+            },
+            added: function() {
+                if (!initializing) {
+                    self.changed(publisherCountCollectionName, uuid, {
+                        count: tmp_cursor.count(),
+                        query: query
+                    });
+                }
+            }
+        });
 
         if (callbacks.afterPublish) {
             cursor = callbacks.afterPublish('count', cursor, this) || cursor;
         }
 
-        self.added(publisherCountCollectionName, Meteor.uuid(), {
+        initializing = false;
+        self.added(publisherCountCollectionName, uuid, {
             count: count,
             query: query
         });
 
         self.ready();
+
+        self.onStop(function () {
+            handle.stop();
+        });
     });
 };

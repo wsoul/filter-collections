@@ -1,4 +1,8 @@
-## Meteor's Filter 
+Adding offline support and fixed a non-reactive fields.
+
+----------------------------------------
+
+## Meteor's Filter
 
 
 Filter Collections is a Smart package for Meteor that adds Sorting, Paging, Filter and Search capabilities for our collections.
