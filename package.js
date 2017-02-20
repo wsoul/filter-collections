@@ -1,6 +1,6 @@
 Package.describe({
     summary: "Filter, paging and sort for Meteor collections with hooks and Iron Router support.",
-    version: "1.0.4",
+    version: "1.0.5",
     name: "deeeed:filter-collections",
     git: "https://github.com/deeeed/filter-collections"
 });
