@@ -36,7 +36,7 @@ FilterCollections.publish = function (collection, options) {
     try {
         check(collection, Mongo.Collection);
     } catch(e) {
-        log.error("Failed check validation for:"+collection._name, e);
+        console.log("Failed check validation for:"+collection._name, e);
     }
 
     var optionalString = Match.Optional(String);
@@ -99,7 +99,7 @@ FilterCollections.publish = function (collection, options) {
             cursor = callbacks.afterPublish('results', cursor, this) || cursor;
         }
 
-        // log.info("publisherResultsId: "+publisherResultsId, collection._name);
+        // console.log("publisherResultsId: "+publisherResultsId, collection._name);
         FilterCollections._extendedPublishCursor(cursor, this, collection._name, publisherResultsId);
         //TODO: why there was publisherResultsCollectionName instead of collection._name? We dont create any new Mongo collection with name publisherResultsCollectionName
         // FilterCollections._extendedPublishCursor(cursor, this, publisherResultsCollectionName, publisherResultsId);
