@@ -31,6 +31,8 @@ FilterCollections._extendedPublishCursor = function (cursor, sub, collection, na
 
 FilterCollections.publish = function (collection, options) {
 
+    console.log("[FilterCollections.publish] publishing now", collection._name);
+
     var optionalFunction = Match.Optional(Function);
 
     try {
@@ -140,6 +142,11 @@ FilterCollections.publish = function (collection, options) {
         var tmp_cursor = collection.find(query.selector);
         var count = tmp_cursor.count();
         var initializing = true;
+        // console.log("Publishing count "+count+" for ", JSON.stringify(query));
+
+        // Fix bug that latest meteor version prevent '$' in query
+        // Replace object to stringification of the query.
+        query = JSON.stringify(query);
 
         // observeChanges only returns after the initial `added` callbacks
         // have run. Until then, we don't want to send a lot of

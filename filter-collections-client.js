@@ -144,7 +144,8 @@ FilterCollections = function (collection, settings) {
                         _callbacks.afterSubscribeCount(null, this);
                     }
 
-                    var res = self._collectionCount.findOne({});
+                    var res = self._collectionCount.findOne();
+                    // console.debug("[_subs.count.ready] res is ", res);
                     self.pager.setTotals(res);
                 }
 
@@ -154,6 +155,7 @@ FilterCollections = function (collection, settings) {
                     _deps.initial_ready.changed();
                 }
             } else {
+                // OFFLINE Mode
                 var count = self._collection.find(query.selector).count();
                 self.pager.setTotals({
                     count: count,
@@ -381,8 +383,14 @@ FilterCollections = function (collection, settings) {
             return pages;
         },
         setTotals: function (res) {
-            _pager.totalItems = res.count;
-            _pager.totalPages = Math.ceil(_pager.totalItems / _pager.itemsPerPage);
+            if(res) {
+                _pager.totalItems = res.count;
+                _pager.totalPages = Math.ceil(_pager.totalItems / _pager.itemsPerPage);
+            } else {
+                _pager.totalItems = 0;
+                _pager.totalPages = 1;
+            }
+
             self.pager.set();
         },
         hasPrevious: function () {
@@ -772,6 +780,7 @@ FilterCollections = function (collection, settings) {
                 return self.sort.get();
             },
             fcPager: function () {
+                _deps.query.depend();
                 return self.pager.get();
             },
             fcFilter: function () {
