@@ -102,9 +102,9 @@ FilterCollections.publish = function (collection, options) {
         }
 
         // console.log("publisherResultsId: "+publisherResultsId, collection._name);
-        FilterCollections._extendedPublishCursor(cursor, this, collection._name, publisherResultsId);
+        // FilterCollections._extendedPublishCursor(cursor, this, collection._name, publisherResultsId);
         //TODO: why there was publisherResultsCollectionName instead of collection._name? We dont create any new Mongo collection with name publisherResultsCollectionName
-        // FilterCollections._extendedPublishCursor(cursor, this, publisherResultsCollectionName, publisherResultsId);
+        FilterCollections._extendedPublishCursor(cursor, this, publisherResultsCollectionName, publisherResultsId);
 
         // Call ready since the extended publish cursor, like the official publish cursor version, does not call
         // ready by itself.

@@ -1,8 +1,8 @@
 Package.describe({
     summary: "Filter, paging and sort for Meteor collections with hooks and Iron Router support.",
-    version: "1.0.6",
+    version: "1.0.7",
     name: "wsoul:filter-collections",
-    git: "https://github.com/deeeed/filter-collections"
+    git: "https://github.com/wsoul/filter-collections"
 });
 
 Package.onUse(function (api) {
